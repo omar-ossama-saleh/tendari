@@ -19,6 +19,7 @@ dependencies = [
     # --- background ingestion ---
     "celery>=5.4,<6.0",
     "redis>=5.2,<6.0",
+    "pypdf>=5.1,<6.0",                   # PDF text extraction for document ingestion
     # --- LLM providers (swappable behind app/agent/providers/base.py) ---
     "anthropic>=0.42,<1.0",
     "openai>=1.59,<2.0",

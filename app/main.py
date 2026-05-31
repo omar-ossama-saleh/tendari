@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from app import __version__
 from app.config import settings
 from app.db import engine
-from app.routers import meta
+from app.routers import documents, meta
 
 
 @asynccontextmanager
@@ -29,6 +29,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(meta.router)
+    app.include_router(documents.router)
 
     return app
 

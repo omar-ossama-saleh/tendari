@@ -16,7 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, settings
 from app.db import SessionLocal
-from app.models import Customer, Order, Workspace
+from app.models import Chunk, Customer, Document, Order, Workspace
+from app.rag.chunking import chunk_text
+from app.rag.embeddings import embed_texts
 from app.security import hash_api_key
 
 logger = logging.getLogger("tendari.seed")
@@ -83,6 +85,34 @@ _ORDERS = [
 ]
 
 
+# --- demo help docs (ingested synchronously so the demo is reproducible) ---
+_HELP_DOCS = [
+    {
+        "title": "Return Policy",
+        "content": (
+            "Returns and Refunds Policy. You may return most items within 30 days "
+            "of delivery for a full refund. Items must be unused and in their "
+            "original packaging. To start a return, contact support with your order "
+            "number. Refunds are issued to the original payment method within 5 to 7 "
+            "business days after we receive the item. Damaged or defective items can "
+            "be returned at any time for a replacement or refund. Final sale items "
+            "and gift cards are not eligible for return. Shipping costs are "
+            "non-refundable unless the return is due to our error."
+        ),
+    },
+    {
+        "title": "Shipping Policy",
+        "content": (
+            "Shipping and Delivery Policy. Orders ship within two business days. "
+            "Standard delivery takes three to five business days. Express delivery "
+            "arrives within two business days. We ship to the United States and "
+            "Canada only. Tracking numbers are emailed once your order ships. If a "
+            "package is lost in transit, contact support to open an investigation."
+        ),
+    },
+]
+
+
 async def _get_or_create_workspace(session: AsyncSession) -> Workspace:
     key_hash = hash_api_key(settings.seed_api_key)
     workspace = await session.scalar(
@@ -136,11 +166,51 @@ async def _seed_orders(
         )
 
 
+async def _seed_documents(session: AsyncSession, workspace: Workspace) -> None:
+    """Create + embed help docs synchronously (idempotent by title)."""
+    for spec in _HELP_DOCS:
+        exists = await session.scalar(
+            select(Document).where(
+                Document.workspace_id == workspace.id,
+                Document.title == spec["title"],
+            )
+        )
+        if exists is not None:
+            continue
+        document = Document(
+            workspace_id=workspace.id,
+            title=spec["title"],
+            source_type="text",
+            status="processing",
+        )
+        session.add(document)
+        await session.flush()
+
+        chunks = chunk_text(
+            spec["content"], settings.chunk_target_tokens, settings.chunk_overlap_tokens
+        )
+        embeddings = await embed_texts([c.content for c in chunks])
+        for chunk, embedding in zip(chunks, embeddings, strict=True):
+            session.add(
+                Chunk(
+                    document_id=document.id,
+                    workspace_id=workspace.id,
+                    chunk_index=chunk.chunk_index,
+                    content=chunk.content,
+                    embedding=embedding,
+                    token_count=chunk.token_count,
+                    meta={},
+                )
+            )
+        document.status = "ready"
+
+
 async def seed() -> None:
     async with SessionLocal() as session:
         workspace = await _get_or_create_workspace(session)
         customers = await _seed_customers(session, workspace)
         await _seed_orders(session, workspace, customers)
+        await _seed_documents(session, workspace)
         await session.commit()
 
         logger.info("Seed complete.")
@@ -152,7 +222,7 @@ async def seed() -> None:
         print("=" * 60)
         print(f"Seeded workspace : {settings.seed_workspace_name}")
         print(f"Workspace id     : {workspace.id}")
-        print(f"Customers        : {len(_CUSTOMERS)}   Orders: {len(_ORDERS)}")
+        print(f"Customers        : {len(_CUSTOMERS)}   Orders: {len(_ORDERS)}   Help docs: {len(_HELP_DOCS)}")
         if is_demo_default:
             print(f"Demo API key     : {settings.seed_api_key}")
             print("Use:  Authorization: Bearer <Demo API key>")
