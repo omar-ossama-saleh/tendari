@@ -229,6 +229,17 @@ def _ms(t0: float) -> int:
     return int((monotonic() - t0) * 1000)
 
 
+def _done_payload(message_id: uuid.UUID, prompt: int, completion: int, cost: Decimal) -> dict[str, Any]:
+    return {
+        "message_id": str(message_id),
+        "usage": {
+            "prompt_tokens": prompt,
+            "completion_tokens": completion,
+            "cost_usd": float(cost),
+        },
+    }
+
+
 # --------------------------------------------------------------------------- #
 # The loop
 # --------------------------------------------------------------------------- #
@@ -282,7 +293,7 @@ async def run_agent(
             final = await _persist_message(
                 session, conversation.id, "assistant", _PROVIDER_ERROR_FALLBACK
             )
-            await _emit("done", {"message_id": str(final.id)})
+            await _emit("done", _done_payload(final.id, prompt_tokens, completion_tokens, cost_total))
             return AgentResult(
                 final_message_id=final.id,
                 text=_PROVIDER_ERROR_FALLBACK,
@@ -310,7 +321,7 @@ async def run_agent(
         if not response.tool_calls:
             text = response.text or ""
             final = await _persist_message(session, conversation.id, "assistant", text)
-            await _emit("done", {"message_id": str(final.id)})
+            await _emit("done", _done_payload(final.id, prompt_tokens, completion_tokens, cost_total))
             return AgentResult(
                 final_message_id=final.id,
                 text=text,
@@ -359,7 +370,7 @@ async def run_agent(
 
     # Iteration cap reached — fail gracefully.
     final = await _persist_message(session, conversation.id, "assistant", _FALLBACK)
-    await _emit("done", {"message_id": str(final.id)})
+    await _emit("done", _done_payload(final.id, prompt_tokens, completion_tokens, cost_total))
     return AgentResult(
         final_message_id=final.id,
         text=_FALLBACK,

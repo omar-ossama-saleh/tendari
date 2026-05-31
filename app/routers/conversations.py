@@ -6,17 +6,23 @@ SSE streaming is added in M3.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import json
+import logging
 import uuid
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from sse_starlette.sse import EventSourceResponse
 
 from app.agent.engine import run_agent
 from app.agent.providers import get_provider
 from app.auth import CurrentWorkspace, DbSession
 from app.db import SessionLocal
-from app.models import Conversation, Customer, Message
+from app.models import Conversation, Customer, Message, Workspace
 from app.schemas.conversations import (
     ConversationCreate,
     ConversationCreated,
@@ -27,6 +33,8 @@ from app.schemas.conversations import (
     UsageSummary,
 )
 from app.tools import get_registry
+
+logger = logging.getLogger("tendari.conversations")
 
 router = APIRouter(prefix="/v1/conversations", tags=["conversations"])
 
@@ -77,16 +85,89 @@ async def _get_owned_conversation(
     return conversation
 
 
+async def _agent_event_stream(
+    workspace: Workspace,
+    conversation: Conversation,
+    content: str,
+) -> AsyncIterator[dict]:
+    """Run the agent in a background task and relay its emitted events as SSE.
+
+    The agent runs on its OWN session (not the request session), committed only
+    when the run completes cleanly and rolled back on client disconnect / error.
+    This avoids committing a half-written turn on disconnect and avoids issuing a
+    commit on a session that was cancelled mid-flush.
+    """
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def emit(event: str, data: dict) -> None:
+        await queue.put((event, data))
+
+    async def runner() -> None:
+        try:
+            async with SessionLocal() as agent_session:
+                try:
+                    await run_agent(
+                        session=agent_session,
+                        session_factory=SessionLocal,
+                        workspace=workspace,
+                        conversation=conversation,
+                        user_text=content,
+                        registry=get_registry(),
+                        provider=get_provider(),
+                        stream=True,
+                        emit=emit,
+                    )
+                    await agent_session.commit()
+                except asyncio.CancelledError:
+                    # Client disconnected — don't persist a partial turn.
+                    with contextlib.suppress(Exception):
+                        await agent_session.rollback()
+                    raise
+                except Exception:
+                    logger.exception("Streaming agent run failed")
+                    with contextlib.suppress(Exception):
+                        await agent_session.rollback()
+                    await queue.put(("error", {"message": "The agent hit an internal error."}))
+        finally:
+            await queue.put(None)  # sentinel: stream complete
+
+    task = asyncio.create_task(runner())
+    try:
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            event, data = item
+            yield {"event": event, "data": json.dumps(data)}
+    finally:
+        if not task.done():
+            task.cancel()
+        # Only our own cancellation should surface here; let real errors raise.
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
 @router.post("/{conversation_id}/messages", response_model=MessageResponse)
 async def post_message(
     conversation_id: uuid.UUID,
     body: MessageRequest,
     workspace: CurrentWorkspace,
     session: DbSession,
-) -> MessageResponse:
+):
+    """Send a message to the agent.
+
+    ``stream=false`` → JSON MessageResponse. ``stream=true`` → text/event-stream
+    with ``token`` / ``tool_call_start`` / ``tool_call_result`` / ``done`` events.
+    """
     conversation = await _get_owned_conversation(conversation_id, workspace, session)
 
-    # Streaming (SSE) lands in M3; M2 always returns the full JSON response.
+    if body.stream:
+        # Streaming runs on its own session; the request session only did the
+        # ownership read above, so its post-stream commit is a no-op.
+        return EventSourceResponse(
+            _agent_event_stream(workspace, conversation, body.content)
+        )
+
     result = await run_agent(
         session=session,
         session_factory=SessionLocal,

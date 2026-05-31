@@ -11,11 +11,13 @@ from functools import lru_cache
 
 from app.agent.registry import ToolRegistry
 from app.tools.help_docs import SEARCH_HELP_DOCS
+from app.tools.orders import LOOKUP_ORDER
 
 
 def build_registry() -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(SEARCH_HELP_DOCS)
+    registry.register(LOOKUP_ORDER)
     return registry
 
 
