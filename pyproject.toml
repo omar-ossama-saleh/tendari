@@ -3,6 +3,7 @@ name = "tendari"
 version = "0.1.0"
 description = "AI support & operations agent for e-commerce — answers from store docs and takes action."
 requires-python = ">=3.12"
+license = { text = "MIT" }
 dependencies = [
     # --- web framework ---
     "fastapi>=0.115,<1.0",

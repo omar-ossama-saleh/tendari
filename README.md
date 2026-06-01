@@ -1,13 +1,57 @@
 # Tendari
 
-**AI customer-support & operations agent for e-commerce.** It answers shopper
-questions grounded in your store's help docs (RAG), takes real actions through a
-governed tool layer (look up orders, file tickets, send email, escalate), and
-gates money-moving actions (refunds) behind mandatory human approval — while
-logging token usage, cost, and latency for every model call.
+![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
+![Postgres](https://img.shields.io/badge/Postgres-pgvector-4169E1?logo=postgresql&logoColor=white)
+![Celery](https://img.shields.io/badge/Celery-worker-37814A?logo=celery&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-idempotency-DC382D?logo=redis&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-85%20passing-success)
 
-The point of the demo: **grounded answers, real actions, a safety gate, and
-visible cost** — in one Swagger-documented API.
+**An AI customer-support & operations agent for e-commerce that does four things
+well: grounded answers, real actions, a hard safety gate on money, and visible
+cost — all in one Swagger-documented API.**
+
+It answers shopper questions grounded in your store's help docs (RAG), takes real
+actions through a governed tool layer (look up orders, file tickets, send email,
+escalate), and gates money-moving actions (refunds) behind mandatory human
+approval — while logging token usage, cost, and latency for every model call.
+
+*Built to show the patterns a production agent actually needs — not a chat
+wrapper: a domain-agnostic agent loop, multi-tenant isolation, a human-in-the-loop
+gate on money, RAG over help docs, swappable LLM providers, and per-call cost
+accounting.*
+
+<p align="center">
+  <img src="docs/demo.png" width="540"
+       alt="Tendari demo console — a grounded answer, a live order lookup, and a refund held for human approval, with token cost ticking up in the usage panel." />
+</p>
+
+> The built-in **`/demo`** console, end to end: a cited answer from the store's
+> help docs → a live `lookup_order` → a refund **parked for human approval** —
+> with token cost accruing in the usage panel. Runs on the mock provider with zero
+> API keys.
+
+---
+
+## Highlights
+
+- **A domain-agnostic agent engine** — `app/agent/` runs the entire tool-calling
+  loop (iteration cap, concurrent tools, context-budget truncation, usage
+  accounting) without importing a single e-commerce concept.
+- **A trust boundary the model can't cross** — the LLM supplies tool *arguments*
+  only, never a workspace id; the workspace is resolved from the API key, so a
+  tool physically cannot reach another tenant's data.
+- **Money is gated, bounded, and idempotent** — refunds never fire from the
+  model; they wait for a human `approve`, can't exceed an order-level ceiling, and
+  process exactly once via a Stripe idempotency key.
+- **Provider-swappable, config-driven** — Anthropic · OpenAI · a mock provider
+  behind one interface; model ids and token prices live in config, never code.
+- **Runs offline with zero keys** — no keys ⇒ mock LLM + deterministic
+  embeddings, so the full demo *and* the 85-test suite run on nothing but Docker.
+- **Cost is a first-class, durable signal** — every model call writes a usage row
+  on its own committed transaction (it survives a request rollback); `GET
+  /v1/usage` rolls it up by model and by day.
 
 ---
 
@@ -79,9 +123,12 @@ is `demo-key-tendari-001` — send it as `Authorization: Bearer demo-key-tendari
 > Token prices are config, not code — see `LLM_PRICING_JSON` and
 > `app/observability/usage.py`.
 
+> **Beyond local:** every process is containerized, so the same four-service
+> stack runs anywhere Docker does — no code changes between laptop and cloud.
+
 ---
 
-## The demo script (definition of done)
+## Try it yourself — the end-to-end demo
 
 Run live against Swagger (or the `/demo` page) with the demo key:
 
@@ -147,36 +194,6 @@ usage `GROUP BY`) is verified live against Postgres.
 
 ---
 
-## Deploy (Railway / Render)
-
-The stack is four processes: **web** (FastAPI), **worker** (Celery),
-**Postgres** (with the `pgvector` extension), **Redis**.
-
-A **Render blueprint** is included — [`render.yaml`](render.yaml):
-
-```bash
-# 1. Push this repo to GitHub.
-# 2. Render → New → Blueprint → pick the repo (reads render.yaml).
-# 3. Set secrets (ANTHROPIC_API_KEY, OPENAI_API_KEY, STRIPE_SECRET_KEY,
-#    and a high-entropy SEED_API_KEY) in the dashboard.
-```
-
-**Railway:** create a project from the repo (Dockerfile is detected), add the
-**Postgres** and **Redis** plugins, then add a second service for the worker with
-start command `celery -A app.tasks.celery_app worker --loglevel=info`. Copy the
-env vars from `.env.example`.
-
-> **Production note — schema migrations & seeding.** The local compose `api`
-> command runs `alembic upgrade head && python -m app.seed` before `uvicorn`.
-> That's convenient for a demo but wrong for **multiple web replicas** (every
-> replica would race the migration and re-seed). For real multi-replica deploys,
-> move `alembic upgrade head` (and the one-time seed) into a **release/pre-deploy
-> step** that runs once, and keep the web command to just `uvicorn`. `render.yaml`
-> wires the migration as a `preDeployCommand` for this reason. Also consider
-> dropping `tests/` from the runtime image to slim it.
-
----
-
 ## Project structure
 
 ```
@@ -196,8 +213,9 @@ app/
   seed.py            demo workspace, customers, orders, help docs
 tests/               loop, tools, auth, refund flow, meta
 alembic/             migrations
-docker-compose.yml · Dockerfile · render.yaml · pyproject.toml · .env.example
+docker-compose.yml · Dockerfile · pyproject.toml · .env.example
 ```
 
-Built milestone-by-milestone (M0 infra → M6 observability/deploy); see
-`tendari_build_handoff.md` for the original spec.
+## License
+
+Released under the [MIT License](LICENSE).
