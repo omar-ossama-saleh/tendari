@@ -1,0 +1,82 @@
+# Local dev / demo stack: api + worker + postgres(pgvector) + redis.
+# Run with:  docker compose up --build
+# External API keys are optional — without them the app uses the mock LLM
+# provider and offline embeddings. Pass real keys via your shell env or .env.
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/tendari
+  REDIS_URL: redis://redis:6379/0
+  LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  CHAT_MODEL: ${CHAT_MODEL:-claude-haiku-4-5}
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+  EMBEDDING_DIM: ${EMBEDDING_DIM:-1536}
+  MAX_AGENT_ITERATIONS: ${MAX_AGENT_ITERATIONS:-8}
+  SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+  SEED_API_KEY: ${SEED_API_KEY:-demo-key-tendari-001}
+  SEED_WORKSPACE_NAME: ${SEED_WORKSPACE_NAME:-Acme Outdoors}
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tendari
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tendari"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  api:
+    build: .
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             python -m app.seed &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+
+  worker:
+    build: .
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    command: celery -A app.tasks.celery_app worker --loglevel=info
+
+volumes:
+  pgdata:

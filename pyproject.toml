@@ -1,0 +1,48 @@
+[project]
+name = "tendari"
+version = "0.1.0"
+description = "AI support & operations agent for e-commerce — answers from store docs and takes action."
+requires-python = ">=3.12"
+dependencies = [
+    # --- web framework ---
+    "fastapi>=0.115,<1.0",
+    "uvicorn[standard]>=0.34,<1.0",
+    "python-multipart>=0.0.18",          # multipart file upload for POST /v1/documents
+    "sse-starlette>=2.1,<3.0",           # Server-Sent Events
+    # --- data / persistence ---
+    "pydantic>=2.10,<3.0",
+    "pydantic-settings>=2.7,<3.0",
+    "sqlalchemy[asyncio]>=2.0.36,<2.1",
+    "asyncpg>=0.30,<0.31",
+    "alembic>=1.14,<2.0",
+    "pgvector>=0.3.6,<0.4",              # SQLAlchemy Vector column type + ops
+    # --- background ingestion ---
+    "celery>=5.4,<6.0",
+    "redis>=5.2,<6.0",
+    "pypdf>=5.1,<6.0",                   # PDF text extraction for document ingestion
+    # --- LLM providers (swappable behind app/agent/providers/base.py) ---
+    "anthropic>=0.42,<1.0",
+    "openai>=1.59,<2.0",
+    # --- external side-effecting services ---
+    "stripe>=11.0,<12.0",
+    "sendgrid>=6.11,<7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9.0",
+    "pytest-asyncio>=0.25,<0.26",
+    "httpx>=0.28,<0.29",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
