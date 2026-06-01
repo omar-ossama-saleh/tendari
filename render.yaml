@@ -17,7 +17,7 @@ services:
     # Run migrations + one-time seed ONCE per release, not per replica/boot, so
     # scaling web replicas never races the migration. Web command is just serve.
     preDeployCommand: "alembic upgrade head && python -m app.seed"
-    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    dockerCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /healthz
     envVars:
       - key: DATABASE_URL
@@ -55,7 +55,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: starter
-    startCommand: "celery -A app.tasks.celery_app worker --loglevel=info"
+    dockerCommand: "celery -A app.tasks.celery_app worker --loglevel=info"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
