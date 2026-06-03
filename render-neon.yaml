@@ -42,7 +42,10 @@ services:
     plan: free
     # No preDeployCommand on free tier — fold migrate + seed into the start
     # command. Both are idempotent, so re-running on every cold start is safe.
-    dockerCommand: "alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    # Must run under `sh -c` — Render execs dockerCommand directly (no shell),
+    # so without this the `&&` chaining and `$PORT` expansion don't happen and
+    # alembic receives "&& python …" as literal args.
+    dockerCommand: "sh -c 'alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port $PORT'"
     healthCheckPath: /healthz
     envVars:
       # Run ingestion in-process — there is no worker service on this blueprint.
