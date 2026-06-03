@@ -16,6 +16,11 @@ COPY alembic ./alembic
 COPY alembic.ini ./
 RUN pip install -e .
 
+# Start script for the worker-less Render free-tier blueprints (migrate + seed +
+# serve). Not used by docker-compose, which overrides the command per service.
+COPY scripts ./scripts
+RUN chmod +x ./scripts/start-render.sh
+
 EXPOSE 8000
 
 # Default command; docker-compose overrides per service (api / worker).

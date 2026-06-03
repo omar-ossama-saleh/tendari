@@ -24,12 +24,10 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
-    # No preDeployCommand on free tier — fold migrate + seed into the start
-    # command. Both are idempotent, so re-running on every cold start is safe.
-    # Must run under `sh -c` — Render execs dockerCommand directly (no shell),
-    # so without this the `&&` chaining and `$PORT` expansion don't happen and
-    # alembic receives "&& python …" as literal args.
-    dockerCommand: "sh -c 'alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port $PORT'"
+    # No preDeployCommand on free tier — migrate + seed + serve live in a start
+    # script (idempotent). Render's dockerCommand mangles `&&` and nested quotes,
+    # so we invoke a single script instead of an inline shell chain.
+    dockerCommand: "sh ./scripts/start-render.sh"
     healthCheckPath: /healthz
     envVars:
       # Run ingestion in-process — there is no worker service on this blueprint.
