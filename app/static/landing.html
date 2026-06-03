@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tendari — AI customer-support agent for e-commerce</title>
+<meta name="description" content="An AI support agent that answers from your help docs, takes real actions, holds anything involving money for human approval, and shows the cost of every call." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/static/tokens.css" />
+<style>
+/* Hallmark · genre: modern-minimal · macrostructure: Narrative Workflow · theme: Quiet
+ * tone: technical · nav: N5 floating pill · footer: Ft2 inline · enrichment: none
+ * pre-emit critique: P5 H4 E5 S5 R5 V4
+ */
+* { box-sizing: border-box; }
+html, body { overflow-x: clip; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
+  color: var(--color-ink);
+  background: var(--color-paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: var(--tracking-tight); line-height: var(--leading-tight); margin: 0; overflow-wrap: anywhere; }
+p { margin: 0; }
+a { color: inherit; }
+.wrap { width: min(72rem, 100% - 2.5rem); margin-inline: auto; }
+.mono { font-family: var(--font-mono); }
+.kicker { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--color-ink-mute); }
+
+/* ── nav · N5 floating pill ─────────────────────────────────────────────── */
+.nav {
+  position: fixed; inset: var(--space-md) auto auto 50%; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: var(--space-lg);
+  padding: 0.5rem 0.6rem 0.5rem 1rem;
+  background: color-mix(in oklch, var(--color-paper) 80%, transparent);
+  backdrop-filter: blur(14px) saturate(120%);
+  border: var(--rule-hair) solid var(--color-rule);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-pill);
+  z-index: 30; max-width: calc(100% - 1.5rem);
+}
+.nav__mark { font-family: var(--font-mono); font-weight: 500; font-size: var(--text-sm); letter-spacing: var(--tracking-flat); text-decoration: none; white-space: nowrap; }
+.nav__mark b { color: var(--color-accent); }
+.nav__links { display: flex; gap: var(--space-md); list-style: none; margin: 0; padding: 0; }
+.nav__links a { font-size: var(--text-sm); color: var(--color-ink-soft); text-decoration: none; white-space: nowrap; transition: color var(--dur-micro) var(--ease-out); }
+.nav__links a:hover { color: var(--color-ink); }
+@media (max-width: 40rem) { .nav__links { display: none; } }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 0.4em; white-space: nowrap;
+  font-family: var(--font-body); font-size: var(--text-sm); font-weight: 500;
+  padding: 0.6rem 1rem; min-height: 44px; border-radius: var(--radius-pill);
+  border: var(--rule-hair) solid transparent; cursor: pointer; text-decoration: none;
+  transition: transform var(--dur-micro) var(--ease-out), background var(--dur-micro) var(--ease-out);
+}
+.btn--fill { background: var(--color-accent); color: var(--color-on-accent); }
+.btn--fill:hover { transform: translateY(-1px); background: var(--color-accent-press); }
+.btn--fill:active { transform: translateY(0); }
+.btn--ghost { background: var(--color-paper); color: var(--color-ink); border-color: var(--color-rule-2); }
+.btn--ghost:hover { transform: translateY(-1px); background: var(--color-paper-2); }
+.btn--ghost:active { transform: translateY(0); }
+.btn--lg { font-size: var(--text-md); padding: 0.85rem 1.5rem; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+/* ── hero · H2 split diptych ────────────────────────────────────────────── */
+.hero { padding-top: clamp(7rem, 14vh, 10rem); padding-bottom: var(--space-2xl); }
+.hero__grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: var(--space-2xl); align-items: center; }
+@media (max-width: 56rem) { .hero__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-xl); } }
+.hero h1 { font-size: var(--text-display-s); font-weight: 600; }
+.hero__accent { color: var(--color-accent); }
+.hero__lede { margin-top: var(--space-lg); max-width: 34ch; color: var(--color-ink-soft); font-size: var(--text-lg); line-height: var(--leading-snug); }
+.hero__cta { margin-top: var(--space-xl); display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.hero__note { margin-top: var(--space-md); font-size: var(--text-sm); color: var(--color-ink-mute); }
+
+/* the honest answer card — content surface, not browser chrome */
+.card { background: var(--color-paper-2); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-lg); padding: var(--space-lg); box-shadow: var(--shadow-card); }
+.card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); padding-bottom: var(--space-md); border-bottom: var(--rule-hair) solid var(--color-rule); }
+.card__title { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--color-ink-mute); }
+.bubble { padding: 0.65rem 0.85rem; border-radius: var(--radius-md); font-size: var(--text-sm); line-height: var(--leading-snug); max-width: 92%; }
+.bubble--user { margin: var(--space-md) 0 var(--space-md) auto; background: var(--color-accent-wash); color: var(--color-ink); border: var(--rule-hair) solid color-mix(in oklch, var(--color-accent) 22%, transparent); }
+.bubble--bot { background: var(--color-paper-3); color: var(--color-ink); }
+.cite { display: inline-flex; align-items: center; gap: 0.4em; margin-top: var(--space-sm); padding: 0.25rem 0.55rem; border-radius: var(--radius-pill); background: var(--color-paper); border: var(--rule-hair) solid var(--color-rule); font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-ink-soft); }
+.cite::before { content: ""; width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--color-good); }
+.card__meter { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; margin-top: var(--space-md); padding-top: var(--space-md); border-top: var(--rule-hair) solid var(--color-rule); font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-ink-mute); }
+.card__meter b { color: var(--color-ink-soft); font-weight: 500; }
+
+/* ── fear strip ─────────────────────────────────────────────────────────── */
+.fears { padding: var(--space-2xl) 0; border-top: var(--rule-hair) solid var(--color-rule); }
+.fears__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-lg); }
+@media (max-width: 56rem) { .fears__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 30rem) { .fears__grid { grid-template-columns: minmax(0, 1fr); } }
+.fear b { display: block; font-weight: 500; }
+.fear s { color: var(--color-ink-mute); text-decoration-color: var(--color-rule-2); }
+.fear span { display: block; margin-top: var(--space-2xs); color: var(--color-accent); font-size: var(--text-sm); }
+
+/* ── stages · Narrative Workflow / F4 step sequence ─────────────────────── */
+.stages { padding: var(--space-3xl) 0; }
+.section-head { max-width: 40ch; margin-bottom: var(--space-2xl); }
+.section-head h2 { font-size: var(--text-2xl); }
+.section-head p { margin-top: var(--space-sm); color: var(--color-ink-soft); }
+.steps { list-style: none; margin: 0; padding: 0; }
+.step { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--space-xl); padding: var(--space-xl) 0; border-top: 2px solid var(--color-ink); }
+.step:last-child { border-bottom: 2px solid var(--color-ink); }
+@media (max-width: 52rem) { .step { grid-template-columns: minmax(0, 1fr); gap: var(--space-md); } }
+.step__no { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--color-accent); font-weight: 500; }
+.step h3 { font-size: var(--text-xl); margin-top: var(--space-2xs); }
+.step__body { color: var(--color-ink-soft); }
+.step__body p + ul { margin-top: var(--space-md); }
+.step__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-sm); }
+.step__list li { display: flex; gap: var(--space-sm); align-items: baseline; font-size: var(--text-sm); }
+.step__list .t { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-ink-mute); min-width: 4.5rem; }
+.step__list .d { color: var(--color-ink-soft); }
+
+/* ── proof ──────────────────────────────────────────────────────────────── */
+.proof { padding: var(--space-2xl) 0; border-top: var(--rule-hair) solid var(--color-rule); background: var(--color-paper-2); }
+.proof__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--rule-hair); background: var(--color-rule); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-md); overflow: hidden; }
+@media (max-width: 52rem) { .proof__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 30rem) { .proof__grid { grid-template-columns: minmax(0, 1fr); } }
+.proof__cell { background: var(--color-paper); padding: var(--space-lg); }
+.proof__cell b { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--color-ink-mute); font-weight: 500; }
+.proof__cell p { margin-top: var(--space-xs); font-size: var(--text-md); }
+
+/* ── final CTA ──────────────────────────────────────────────────────────── */
+.cta { padding: var(--space-3xl) 0; text-align: center; }
+.cta h2 { font-size: var(--text-2xl); max-width: 22ch; margin-inline: auto; }
+.cta p { margin-top: var(--space-md); color: var(--color-ink-soft); }
+.cta__row { margin-top: var(--space-xl); display: flex; flex-wrap: wrap; gap: var(--space-sm); justify-content: center; }
+
+/* ── footer · Ft2 inline ────────────────────────────────────────────────── */
+.foot { border-top: var(--rule-hair) solid var(--color-rule); padding: var(--space-lg) 0; }
+.foot__line { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; align-items: center; font-size: var(--text-sm); color: var(--color-ink-mute); }
+.foot__line a, .foot__line span { white-space: nowrap; }
+.foot__line a { color: var(--color-ink-soft); text-decoration: none; }
+.foot__line a:hover { color: var(--color-ink); text-decoration: underline; text-underline-offset: 2px; }
+.foot__sep { color: var(--color-rule-2); }
+
+/* ── load reveal ────────────────────────────────────────────────────────── */
+.reveal { opacity: 0; transform: translateY(8px); animation: reveal var(--dur-long) var(--ease-out) forwards; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes reveal { to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; }
+  .reveal { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" aria-label="Primary">
+  <a class="nav__mark" href="/">tendari<b>·</b></a>
+  <ul class="nav__links">
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#proof">Under the hood</a></li>
+    <li><a href="https://github.com/Omar-Elhorbity/tendari" rel="noopener">Source</a></li>
+  </ul>
+  <a class="btn btn--fill" href="/demo/">Try the demo →</a>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero__grid">
+    <div class="reveal" style="--i:0">
+      <p class="kicker">AI support agent · e-commerce</p>
+      <h1 style="margin-top:var(--space-md)">Grounded answers. Real actions. <span class="hero__accent">No runaway refunds.</span></h1>
+      <p class="hero__lede">Tendari answers shoppers from your own help docs, acts on your real systems, and holds anything involving money for one-click human approval — with the cost of every AI call in plain sight.</p>
+      <div class="hero__cta">
+        <a class="btn btn--fill btn--lg" href="/demo/">Try the live demo →</a>
+        <a class="btn btn--ghost btn--lg" href="https://github.com/Omar-Elhorbity/tendari" rel="noopener">View source</a>
+      </div>
+      <p class="hero__note">Runs on a built-in mock — no signup, no API key, $0. Or bring your own key.</p>
+    </div>
+
+    <div class="reveal" style="--i:1">
+      <div class="card" role="img" aria-label="Example: the agent answers a return-window question, cites the store's help doc, and reports the cost of the call.">
+        <div class="card__head">
+          <span class="card__title">Conversation</span>
+          <span class="card__title">live cost ↓</span>
+        </div>
+        <p class="bubble bubble--user">What's your return window?</p>
+        <div class="bubble bubble--bot">
+          You can return unworn items within 30 days of delivery for a full refund.
+          <br /><span class="cite">Returns &amp; refunds · help doc</span>
+        </div>
+        <div class="card__meter">
+          <span><b>claude-haiku</b></span>
+          <span><b>412</b> tokens</span>
+          <span><b>$0.0007</b></span>
+          <span><b>840</b> ms</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- The four things clients fear about AI agents — and that each is handled -->
+<section class="fears">
+  <div class="wrap">
+    <div class="fears__grid">
+      <div class="fear"><b><s>It makes things up</s></b><span>Answers cite your docs</span></div>
+      <div class="fear"><b><s>It fakes actions</s></b><span>Acts on real systems</span></div>
+      <div class="fear"><b><s>It moves money wrongly</s></b><span>Humans approve refunds</span></div>
+      <div class="fear"><b><s>Cost is a black box</s></b><span>Every call is metered</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="stages" id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>What the agent actually does</h2>
+      <p>Four stages, in order — each one closes a gap that makes teams nervous about putting AI in front of customers.</p>
+    </div>
+    <ol class="steps">
+      <li class="step">
+        <div>
+          <p class="step__no">1.0 — ANSWER</p>
+          <h3>It answers from your docs, not its imagination.</h3>
+        </div>
+        <div class="step__body">
+          <p>Questions are answered with retrieval-augmented generation over your own help content, so replies cite a real source instead of hallucinating. If the docs don't cover it, the agent says so and escalates.</p>
+        </div>
+      </li>
+      <li class="step">
+        <div>
+          <p class="step__no">2.0 — ACT</p>
+          <h3>It does the work, not just the talking.</h3>
+        </div>
+        <div class="step__body">
+          <p>The agent calls real tools on your systems — scoped to one customer's data at a time.</p>
+          <ul class="step__list">
+            <li><span class="t">lookup</span><span class="d">Live order &amp; shipment status</span></li>
+            <li><span class="t">ticket</span><span class="d">Files a support ticket</span></li>
+            <li><span class="t">email</span><span class="d">Sends a customer email</span></li>
+            <li><span class="t">escalate</span><span class="d">Hands off to a human</span></li>
+          </ul>
+        </div>
+      </li>
+      <li class="step">
+        <div>
+          <p class="step__no">3.0 — GATE</p>
+          <h3>It can't move money on its own.</h3>
+        </div>
+        <div class="step__body">
+          <p>Refunds are never issued by the model. They're held for one-click human approval, capped at the order total, and processed exactly once — so the AI can't refund incorrectly, and a retry can't double-refund.</p>
+        </div>
+      </li>
+      <li class="step">
+        <div>
+          <p class="step__no">4.0 — ACCOUNT</p>
+          <h3>Every call's cost in plain sight.</h3>
+        </div>
+        <div class="step__body">
+          <p>Token usage, latency, and dollar cost are recorded for every AI call and rolled up per model and per day. Spend is a number you can read, not a surprise on the invoice.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="proof" id="proof">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Built for production, not a demo</h2>
+      <p>The demo runs with zero keys, but the engine underneath is the real thing.</p>
+    </div>
+    <div class="proof__grid">
+      <div class="proof__cell"><b>Isolation</b><p>Multi-tenant API, per-customer data scoping on every query and tool.</p></div>
+      <div class="proof__cell"><b>Providers</b><p>Swappable LLMs — Anthropic &amp; OpenAI behind one interface.</p></div>
+      <div class="proof__cell"><b>Tested</b><p>90 automated tests, green in CI on every push.</p></div>
+      <div class="proof__cell"><b>Offline</b><p>No keys → mock LLM + deterministic embeddings. Full demo for $0.</p></div>
+      <div class="proof__cell"><b>Portable</b><p>Dockerized; one blueprint deploys the whole stack.</p></div>
+      <div class="proof__cell"><b>Your key</b><p>Visitors can run the agent on their own LLM key (BYOK).</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="wrap">
+    <h2>See it answer, act, and stop at the money.</h2>
+    <p>Ninety seconds in the console tells the whole story.</p>
+    <div class="cta__row">
+      <a class="btn btn--fill btn--lg" href="/demo/">Try the live demo →</a>
+      <a class="btn btn--ghost btn--lg" href="/docs" rel="noopener">API reference</a>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap foot__line">
+    <span>© 2026 Tendari</span>
+    <span class="foot__sep">·</span>
+    <span>Built by Omar Elhorbity</span>
+    <span class="foot__sep">·</span>
+    <a href="https://github.com/Omar-Elhorbity/tendari" rel="noopener">Source on GitHub</a>
+    <span class="foot__sep">·</span>
+    <a href="/demo/">Demo</a>
+    <span class="foot__sep">·</span>
+    <a href="/docs">API</a>
+    <span class="foot__sep">·</span>
+    <span>MIT licensed</span>
+  </div>
+</footer>
+
+</body>
+</html>

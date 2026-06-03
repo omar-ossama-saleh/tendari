@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
@@ -37,8 +38,14 @@ def create_app() -> FastAPI:
     app.include_router(conversations.router)
     app.include_router(actions.router)
 
-    # Tiny static demo console at /demo (optional; Swagger is the primary surface).
+    # Marketing landing page at the root, plus the static demo console at /demo.
+    # Both pages share /static/tokens.css. Swagger stays the primary API surface.
     if _STATIC_DIR.is_dir():
+        @app.get("/", include_in_schema=False)
+        async def landing() -> FileResponse:
+            return FileResponse(_STATIC_DIR / "landing.html")
+
+        app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
         app.mount("/demo", StaticFiles(directory=_STATIC_DIR, html=True), name="demo")
 
     return app

@@ -4,78 +4,193 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Tendari — demo console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/static/tokens.css" />
 <style>
-  :root { --fg:#1c2330; --mut:#6b7686; --line:#e3e7ee; --accent:#2f6df6; --bg:#f7f8fa; }
-  * { box-sizing: border-box; }
-  body { font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-         margin:0; color:var(--fg); background:var(--bg); }
-  header { padding:14px 20px; border-bottom:1px solid var(--line); background:#fff; }
-  header h1 { font-size:16px; margin:0; } header small { color:var(--mut); }
-  main { max-width:880px; margin:0 auto; padding:18px 20px 60px; }
-  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  input,button { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; }
-  input { background:#fff; } input[type=text]{ flex:1; min-width:160px; }
-  button { background:var(--accent); color:#fff; border-color:var(--accent); cursor:pointer; }
-  button.ghost { background:#fff; color:var(--fg); border-color:var(--line); }
-  button:disabled { opacity:.5; cursor:default; }
-  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; margin-top:16px; }
-  .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--mut); margin:0 0 10px; }
-  #log { display:flex; flex-direction:column; gap:10px; min-height:60px; }
-  .msg { padding:9px 12px; border-radius:10px; max-width:85%; white-space:pre-wrap; }
-  .me { align-self:flex-end; background:#eaf1ff; }
-  .bot { align-self:flex-start; background:#f1f3f7; }
-  .evt { align-self:flex-start; color:var(--mut); font-size:12px; font-family:ui-monospace,monospace; }
-  pre { background:#0d1117; color:#c9d1d9; padding:12px; border-radius:8px; overflow:auto; font-size:12px; }
-  .pa { border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin-bottom:8px; }
-  .pa .meta { color:var(--mut); font-size:12px; }
-  .pa button { padding:4px 10px; font-size:12px; margin-left:6px; }
+/* Hallmark · genre: modern-minimal · theme: Quiet · component-scope: demo console
+ * tone: technical · nav: N5 floating pill · pre-emit critique: P5 H4 E5 S5 R5 V4
+ */
+* { box-sizing: border-box; }
+html, body { overflow-x: clip; }
+body {
+  margin: 0; font-family: var(--font-body); font-size: var(--text-md);
+  line-height: var(--leading-body); color: var(--color-ink); background: var(--color-paper);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2 { font-family: var(--font-display); letter-spacing: var(--tracking-tight); line-height: var(--leading-tight); margin: 0; }
+p { margin: 0; }
+a { color: var(--color-accent); }
+.wrap { width: min(72rem, 100% - 2rem); margin-inline: auto; }
+.mono { font-family: var(--font-mono); }
+
+/* nav · floating pill */
+.nav {
+  position: fixed; inset: var(--space-md) auto auto 50%; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: var(--space-lg);
+  padding: 0.5rem 0.6rem 0.5rem 1rem;
+  background: color-mix(in oklch, var(--color-paper) 80%, transparent);
+  backdrop-filter: blur(14px) saturate(120%);
+  border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-pill); z-index: 30; max-width: calc(100% - 1.5rem);
+}
+.nav__mark { font-family: var(--font-mono); font-weight: 500; font-size: var(--text-sm); text-decoration: none; color: var(--color-ink); white-space: nowrap; }
+.nav__mark b { color: var(--color-accent); }
+.nav__tag { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--color-ink-mute); }
+.nav__links { display: flex; gap: var(--space-md); list-style: none; margin: 0; padding: 0; }
+.nav__links a { font-size: var(--text-sm); color: var(--color-ink-soft); text-decoration: none; white-space: nowrap; }
+.nav__links a:hover { color: var(--color-ink); }
+@media (max-width: 38rem) { .nav__links { display: none; } }
+
+main { padding-top: clamp(5.5rem, 12vh, 7rem); padding-bottom: var(--space-2xl); }
+.lede { margin-bottom: var(--space-lg); }
+.lede h1 { font-size: var(--text-2xl); }
+.lede p { margin-top: var(--space-xs); color: var(--color-ink-soft); max-width: 60ch; }
+
+.console { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: var(--space-lg); align-items: start; }
+@media (max-width: 58rem) { .console { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: var(--space-lg); }
+
+.card { background: var(--color-paper-2); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-lg); padding: var(--space-lg); }
+.card > h2 { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 500; letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--color-ink-mute); margin-bottom: var(--space-md); display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
+
+/* inputs + buttons */
+label { display: block; font-size: var(--text-xs); color: var(--color-ink-mute); margin-bottom: var(--space-2xs); }
+input, select, textarea { font: inherit; width: 100%; padding: 0.6rem 0.7rem; color: var(--color-ink); background: var(--color-paper); border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-sm); }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; border-color: transparent; }
+.field + .field { margin-top: var(--space-sm); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4em; white-space: nowrap; font: inherit; font-size: var(--text-sm); font-weight: 500; padding: 0.55rem 0.9rem; min-height: 44px; border-radius: var(--radius-pill); border: var(--rule-hair) solid transparent; cursor: pointer; transition: transform var(--dur-micro) var(--ease-out), background var(--dur-micro) var(--ease-out); }
+.btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.btn--fill { background: var(--color-accent); color: var(--color-on-accent); }
+.btn--fill:hover { transform: translateY(-1px); background: var(--color-accent-press); }
+.btn--fill:active { transform: translateY(0); }
+.btn--fill:disabled { opacity: 0.5; cursor: default; transform: none; }
+.btn--ghost { background: var(--color-paper); color: var(--color-ink); border-color: var(--color-rule-2); }
+.btn--ghost:hover { transform: translateY(-1px); background: var(--color-paper-2); }
+.btn--ghost:active { transform: translateY(0); }
+.btn--block { width: 100%; margin-top: var(--space-sm); }
+
+/* chat */
+.chat { padding: 0; overflow: hidden; }
+.chat__head { padding: var(--space-md) var(--space-lg); border-bottom: var(--rule-hair) solid var(--color-rule); display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
+.chat__head h2 { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 500; letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--color-ink-mute); }
+#log { display: flex; flex-direction: column; gap: var(--space-sm); min-height: 16rem; max-height: 52vh; overflow-y: auto; padding: var(--space-lg); }
+.msg { padding: 0.6rem 0.85rem; border-radius: var(--radius-md); max-width: 86%; white-space: pre-wrap; font-size: var(--text-sm); line-height: var(--leading-snug); overflow-wrap: anywhere; }
+.msg.me { align-self: flex-end; background: var(--color-accent-wash); border: var(--rule-hair) solid color-mix(in oklch, var(--color-accent) 22%, transparent); }
+.msg.bot { align-self: flex-start; background: var(--color-paper-3); }
+.msg.evt { align-self: flex-start; max-width: 100%; color: var(--color-ink-mute); font-family: var(--font-mono); font-size: var(--text-xs); background: none; padding: 0.1rem 0.2rem; }
+.empty { color: var(--color-ink-mute); font-size: var(--text-sm); align-self: center; margin: auto; text-align: center; }
+.chat__foot { padding: var(--space-md) var(--space-lg) var(--space-lg); border-top: var(--rule-hair) solid var(--color-rule); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-bottom: var(--space-sm); }
+.chip { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-ink-soft); background: var(--color-paper); border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-pill); padding: 0.35rem 0.7rem; min-height: 32px; cursor: pointer; transition: background var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out); }
+.chip:hover { background: var(--color-paper-3); color: var(--color-ink); }
+.chip:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.composer { display: flex; gap: var(--space-sm); }
+.composer input { flex: 1; min-width: 0; }
+
+/* mode note + select row */
+.modeNote { margin-top: var(--space-sm); font-size: var(--text-xs); line-height: var(--leading-snug); color: var(--color-ink-soft); }
+.forget { margin-top: var(--space-sm); background: none; border: none; color: var(--color-ink-mute); font: inherit; font-size: var(--text-xs); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; padding: 0; }
+.forget:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+/* pending actions */
+#pending .meta { color: var(--color-ink-mute); font-size: var(--text-sm); }
+.pa { border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-md); padding: var(--space-sm) var(--space-md); margin-bottom: var(--space-sm); }
+.pa b { font-family: var(--font-mono); font-size: var(--text-sm); }
+.pa .meta { display: block; color: var(--color-ink-mute); font-size: var(--text-xs); margin: var(--space-2xs) 0 var(--space-sm); }
+.pa button { font: inherit; font-size: var(--text-xs); font-weight: 500; padding: 0.35rem 0.8rem; min-height: 36px; border-radius: var(--radius-pill); border: var(--rule-hair) solid transparent; cursor: pointer; background: var(--color-good); color: var(--color-on-accent); margin-right: var(--space-xs); }
+.pa button.ghost { background: var(--color-paper); color: var(--color-ink-soft); border-color: var(--color-rule-2); }
+.pa button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+#usage { font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.5; color: var(--color-ink-soft); background: var(--color-paper); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-sm); padding: var(--space-md); margin: 0; overflow: auto; max-height: 16rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+}
 </style>
 </head>
 <body>
-<header>
-  <h1>Tendari <small>— grounded answers, real actions, a safety gate, visible cost</small></h1>
-</header>
-<main>
-  <div class="card">
-    <div class="row">
-      <input id="base" type="text" value="" placeholder="API base (blank = same origin)" style="flex:0 0 220px" />
-      <input id="key" type="text" value="demo-key-tendari-001" placeholder="Workspace API key" style="flex:0 0 220px" />
-      <button class="ghost" onclick="newConvo()">New conversation</button>
-    </div>
+
+<nav class="nav" aria-label="Primary">
+  <a class="nav__mark" href="/">tendari<b>·</b></a>
+  <span class="nav__tag">demo console</span>
+  <ul class="nav__links">
+    <li><a href="/">Home</a></li>
+    <li><a href="/docs">API</a></li>
+  </ul>
+</nav>
+
+<main class="wrap">
+  <div class="lede">
+    <h1>Try the agent</h1>
+    <p>Ask a question, watch it cite a source, look up a real order, and — for anything involving money — wait for your one-click approval. Cost is metered on the right.</p>
   </div>
 
-  <div class="card">
-    <h2>AI model — bring your own key (optional)</h2>
-    <div class="row">
-      <select id="provider" onchange="onProviderChange()" style="flex:0 0 220px">
-        <option value="mock">Free demo — no key needed</option>
-        <option value="anthropic">Anthropic — Claude (your key)</option>
-        <option value="openai">OpenAI — GPT (your key)</option>
-      </select>
-      <input id="llmkey" type="password" placeholder="Paste your provider API key" oninput="saveLlm()" style="flex:1; display:none" />
-      <button id="forgetKey" class="ghost" onclick="forgetLlm()" style="display:none">Forget key</button>
-    </div>
-    <div id="modeNote" class="meta" style="color:var(--mut); font-size:12px; margin-top:8px"></div>
-  </div>
+  <div class="console">
+    <!-- main chat -->
+    <section class="card chat" aria-label="Chat">
+      <div class="chat__head">
+        <h2>Chat</h2>
+        <button class="btn btn--ghost" style="min-height:36px;padding:0.4rem 0.8rem;font-size:var(--text-xs)" onclick="newConvo()">New conversation</button>
+      </div>
+      <div id="log">
+        <p class="empty">No messages yet — pick a suggestion below or type your own.</p>
+      </div>
+      <div class="chat__foot">
+        <div class="chips" aria-label="Example questions">
+          <button class="chip" onclick="ask(this.textContent)">What's your return window?</button>
+          <button class="chip" onclick="ask(this.textContent)">Where's order #1002?</button>
+          <button class="chip" onclick="ask(this.textContent)">Refund #1002 — it arrived damaged</button>
+        </div>
+        <div class="composer">
+          <input id="q" type="text" placeholder="Ask the agent…" onkeydown="if(event.key==='Enter')send()" aria-label="Your message" />
+          <button id="sendBtn" class="btn btn--fill" onclick="send()">Send</button>
+        </div>
+      </div>
+    </section>
 
-  <div class="card">
-    <h2>Chat</h2>
-    <div id="log"></div>
-    <div class="row" style="margin-top:12px">
-      <input id="q" type="text" placeholder="Ask… e.g. What's your return window?  •  Where's order #1002?  •  Refund #1002, it arrived damaged"
-             onkeydown="if(event.key==='Enter')send()" />
-      <button id="sendBtn" onclick="send()">Send</button>
-    </div>
-  </div>
+    <!-- sidebar -->
+    <aside class="side">
+      <section class="card" aria-label="AI model">
+        <h2>AI model</h2>
+        <div class="field">
+          <label for="provider">Provider</label>
+          <select id="provider" onchange="onProviderChange()">
+            <option value="mock">Free demo — no key needed</option>
+            <option value="anthropic">Anthropic — Claude (your key)</option>
+            <option value="openai">OpenAI — GPT (your key)</option>
+          </select>
+        </div>
+        <div class="field">
+          <input id="llmkey" type="password" placeholder="Paste your provider API key" oninput="saveLlm()" aria-label="Your provider API key" style="display:none" />
+        </div>
+        <button id="forgetKey" class="forget" onclick="forgetLlm()" style="display:none">Forget key</button>
+        <p id="modeNote" class="modeNote"></p>
+      </section>
 
-  <div class="card">
-    <h2>Pending actions (human-in-the-loop) <button class="ghost" style="float:right;padding:3px 8px" onclick="loadPending()">refresh</button></h2>
-    <div id="pending"><span class="meta" style="color:#6b7686">none loaded</span></div>
-  </div>
+      <section class="card" aria-label="Pending actions">
+        <h2>Pending approval <button class="btn btn--ghost" style="min-height:30px;padding:0.25rem 0.6rem;font-size:var(--text-xs)" onclick="loadPending()">refresh</button></h2>
+        <div id="pending"><span class="meta">none loaded</span></div>
+      </section>
 
-  <div class="card">
-    <h2>Usage <button class="ghost" style="float:right;padding:3px 8px" onclick="loadUsage()">refresh</button></h2>
-    <pre id="usage">—</pre>
+      <section class="card" aria-label="Usage and cost">
+        <h2>Usage &amp; cost <button class="btn btn--ghost" style="min-height:30px;padding:0.25rem 0.6rem;font-size:var(--text-xs)" onclick="loadUsage()">refresh</button></h2>
+        <pre id="usage">—</pre>
+      </section>
+
+      <section class="card" aria-label="Connection">
+        <h2>Connection</h2>
+        <div class="field">
+          <label for="base">API base</label>
+          <input id="base" type="text" value="" placeholder="blank = same origin" />
+        </div>
+        <div class="field">
+          <label for="key">Workspace API key</label>
+          <input id="key" type="text" value="demo-key-tendari-001" />
+        </div>
+      </section>
+    </aside>
   </div>
 </main>
 
@@ -143,10 +258,17 @@ const hdrs = () => {
 
 restoreLlm();
 
+// Clear the empty-state placeholder the first time a real message lands.
+function clearEmpty() { const e = $('log').querySelector('.empty'); if (e) e.remove(); }
+
 function add(cls, text) {
+  clearEmpty();
   const d = document.createElement('div'); d.className = 'msg ' + cls; d.textContent = text;
   $('log').appendChild(d); d.scrollIntoView(); return d;
 }
+
+// Suggested-question chip → fills the composer and sends.
+function ask(text) { $('q').value = text; send(); }
 
 async function newConvo() {
   const r = await fetch(base() + '/v1/conversations', { method: 'POST', headers: hdrs(), body: '{}' });
